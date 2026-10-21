@@ -1,0 +1,121 @@
+// Battleship persistence schema (PostgreSQL).
+// The datasource URL lives in prisma.config.ts (datasource.url = env('DATABASE_URL')).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum GameMode {
+  QUICK
+  PRIVATE
+  PRACTICE
+}
+
+enum EndReason {
+  ALL_SUNK
+  FORFEIT
+  TIMEOUT
+  ABANDONED
+  CANCELLED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  /// Null for guests. Stored lower-case (see usernameSchema in @battleship/shared).
+  username     String?  @unique
+  passwordHash String?
+  displayName  String
+  avatar       String
+  isGuest      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  lastSeenAt   DateTime @default(now())
+
+  stats        PlayerStats?
+  participants MatchParticipant[]
+  achievements UserAchievement[]
+}
+
+model PlayerStats {
+  userId        String   @id
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gamesPlayed   Int      @default(0)
+  wins          Int      @default(0)
+  losses        Int      @default(0)
+  shotsFired    Int      @default(0)
+  shotsHit      Int      @default(0)
+  shipsSunk     Int      @default(0)
+  currentStreak Int      @default(0)
+  bestStreak    Int      @default(0)
+  rating        Int      @default(1000)
+  practiceGames Int      @default(0)
+  practiceWins  Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  @@index([rating(sort: Desc), wins(sort: Desc)])
+}
+
+model Match {
+  id           String    @id
+  mode         GameMode
+  startedAt    DateTime
+  endedAt      DateTime
+  durationMs   Int
+  /// Null for draws / abandoned matches without a winner.
+  winnerUserId String?
+  endReason    EndReason
+  totalMoves   Int
+  createdAt    DateTime  @default(now())
+
+  participants MatchParticipant[]
+
+  @@index([endedAt(sort: Desc)])
+}
+
+model MatchParticipant {
+  id           String  @id @default(cuid())
+  matchId      String
+  match        Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  /// Null for the AI opponent.
+  userId       String?
+  user         User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  isAi         Boolean @default(false)
+  aiDifficulty String?
+  displayName  String
+  avatar       String
+  won          Boolean
+  shots        Int
+  hits         Int
+  misses       Int
+  shipsSunk    Int
+  shipsLost    Int
+  /// Null for practice matches and AI participants.
+  ratingChange Int?
+
+  @@index([userId])
+  @@index([matchId])
+}
+
+/// Seeded from ACHIEVEMENTS in @battleship/shared on startup (upsert).
+model Achievement {
+  key         String @id
+  name        String
+  description String
+
+  unlocks UserAchievement[]
+}
+
+model UserAchievement {
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key         String
+  achievement Achievement @relation(fields: [key], references: [key], onDelete: Cascade)
+  unlockedAt  DateTime    @default(now())
+
+  @@id([userId, key])
+}

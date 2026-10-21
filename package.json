@@ -1,0 +1,29 @@
+{
+  "name": "battleship",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Online multiplayer Battleship — React + Socket.IO + Express + Prisma",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n server,client -c cyan,magenta \"npm:dev -w @battleship/server\" \"npm:dev -w @battleship/client\"",
+    "build": "npm run build -w @battleship/client && npm run build -w @battleship/server",
+    "start": "npm run start -w @battleship/server",
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "npm run test:e2e -w @battleship/client",
+    "db:generate": "npm run db:generate -w @battleship/server",
+    "db:migrate": "npm run db:migrate -w @battleship/server",
+    "db:migrate:dev": "npm run db:migrate:dev -w @battleship/server",
+    "db:setup-local": "bash scripts/setup-local-db.sh"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.5",
+    "typescript": "^5.9.3"
+  }
+}

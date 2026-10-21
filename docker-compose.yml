@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: battleship
+      POSTGRES_PASSWORD: battleship
+      POSTGRES_DB: battleship
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U battleship -d battleship"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://battleship:battleship@db:5432/battleship
+      # Replace with a long random secret in real deployments: openssl rand -hex 32
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-0123456789abcdef}
+      # Browser origin(s) allowed to reach the API. With SERVE_CLIENT=true the app is same-origin,
+      # so this can stay empty unless you host the client elsewhere.
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3001}
+      SERVE_CLIENT: "true"
+      TRUST_PROXY: "true"
+      LOG_LEVEL: info
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
